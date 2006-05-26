@@ -10,13 +10,17 @@ GnuNoChown      = YES
 GnuAfterInstall = install-startup-items install-config install-logdir install-testtools install-strip plugins
 
 Extra_CC_Flags  = -mdynamic-no-pic  -no-cpp-precomp -I$(SRCROOT)/libopendirectorycommon -F/System/Library/PrivateFrameworks\
-		-DUSES_RECVFROM -DWITH_OPENDIRECTORY -DWITH_MEMBERD -DUSES_KEYCHAIN -DWITH_BRLM
+		-DUSES_RECVFROM -DWITH_OPENDIRECTORY -DWITH_MEMBERD -DUSES_KEYCHAIN -DWITH_SACL
+
+ifneq "$(RC_RELEASE)" "Darwin"
+Extra_CC_Flags += -DWITH_BRLM
+endif
 
 Extra_Configure_Flags = --with-swatdir="$(SHAREDIR)/swat"			\
 			--with-sambabook="$(SHAREDIR)/swat/using_samba"		\
 			--with-configdir="/private/etc"				\
 			--with-privatedir="$(VARDIR)/db/samba"			\
-			--with-libdir="/usr/lib/samba"					\
+			--with-libdir="/usr/lib/samba"				\
 			--with-lockdir="$(VARDIR)/samba"			\
 			--with-logfilebase="$(LOGDIR)/samba"			\
 			--with-piddir="$(RUNDIR)"				\
@@ -26,11 +30,11 @@ Extra_Configure_Flags = --with-swatdir="$(SHAREDIR)/swat"			\
 			--with-ldap						\
 			--with-spinlocks					\
 			--with-libiconv						\
-			--with-readline=no					\
+			--without-readline					\
 			--disable-shared					\
 			--without-libsmbclient					\
 			--with-winbind						\
-			--with-pam
+			--with-pam						
 
 Extra_Install_Flags   = SWATDIR="$(DSTROOT)$(SHAREDIR)/swat"			\
 			SAMBABOOK="$(DSTROOT)$(SHAREDIR)/swat/using_samba"	\
@@ -47,7 +51,11 @@ EXTRA_ALL_TARGETS="bin/smbtorture@EXEEXT@ bin/msgtest@EXEEXT@ bin/masktest@EXEEX
 
 include $(MAKEFILEPATH)/CoreOS/ReleaseControl/GNUSource.make
 
-LDFLAGS += -framework Security -framework CoreFoundation -framework DirectoryService -framework ByteRangeLocking -L$(OBJROOT) -lopendirectorycommon
+ifneq "$(RC_RELEASE)" "Darwin"
+LDFLAGS += -framework ByteRangeLocking
+endif
+
+LDFLAGS += -framework Security -framework CoreFoundation -framework DirectoryService -L$(OBJROOT) -lopendirectorycommon
 
 PATCHES = $(wildcard $(SRCROOT)/patches/*.diff)
 
@@ -118,7 +126,7 @@ install-testtools:
 	
 plugins:
 	echo "building $@";
-	make -C $(SRCROOT)/auth_ods -f auth_ods.make RC_CFLAGS="$(RC_CFLAGS) -DWITH_SACL=1"
+	make -C $(SRCROOT)/auth_ods -f auth_ods.make RC_CFLAGS="$(RC_CFLAGS)"
 	install -c -m 755 $(OBJROOT)/auth_ods.so $(DSTROOT)/usr/lib/samba/auth/opendirectory.so
 	strip -x $(DSTROOT)/usr/lib/samba/auth/opendirectory.so
 	make -C $(SRCROOT)/pdb_ods -f pdb_ods.make RC_CFLAGS="$(RC_CFLAGS) -DUSES_ODGROUPMAPPING -DUSE_ALGORITHMIC_RID -DUSES_KEYCHAIN"
